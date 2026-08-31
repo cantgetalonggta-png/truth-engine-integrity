@@ -1,0 +1,9 @@
+zstandard
+beautifulsoup4
+neo4j
+psutil
+prometheus_client
+langchain
+langchain-community
+langchain-openai
+langchain-core
