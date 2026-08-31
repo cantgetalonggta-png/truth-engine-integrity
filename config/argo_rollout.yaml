@@ -1,0 +1,47 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: truth-engine-service
+  namespace: research-core
+spec:
+  replicas: 20
+  strategy:
+    canary:
+      analysis:
+        templates:
+          - templateName: server-error-rate-check
+      steps:
+        - setWeight: 5
+        - pause: { duration: 10m }
+        - setWeight: 25
+        - pause: { duration: 30m }
+        - setWeight: 50
+  template:
+    metadata:
+      labels:
+        app: truth-engine
+    spec:
+      containers:
+        - name: core-engine
+          image: IMAGE_TAG_PLACEHOLDER
+          ports:
+            - containerPort: 8080
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: server-error-rate-check
+  namespace: research-core
+spec:
+  metrics:
+  - name: success-rate
+    interval: 30s
+    successCondition: result[0] >= 0.995
+    failureLimit: 2
+    provider:
+      prometheus:
+        address: http://cluster.local
+        query: |
+          sum(rate(http_requests_total{status=~"2.*",app="truth-engine"}[2m])) 
+          / 
+          sum(rate(http_requests_total{app="truth-engine"}[2m]))

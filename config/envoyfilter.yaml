@@ -1,0 +1,31 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: upstream-yara-packet-inspector
+  namespace: research-core
+spec:
+  workloadSelector:
+    labels:
+      app: truth-engine
+  configPatches:
+    - applyTo: HTTP_FILTER
+      match:
+        context: SIDECAR_INBOUND
+        listener:
+          filterChain:
+            filter:
+              name: 'envoy.filters.network.http_connection_manager'
+      patch:
+        operation: INSERT_BEFORE
+        value:
+          name: 'research.internal/yara_wasm_filter'
+          typed_config:
+            '@type': type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
+            config:
+              name: 'yara_inspector'
+              root_id: 'yara_root'
+              vm_config:
+                runtime: 'envoy.wasm.runtime.v8'
+                code:
+                  local:
+                    filename: '/var/local/lib/yara_inspector_filter.wasm'
