@@ -1,0 +1,34 @@
+name: Enforce Cryptographic Heritage Validation
+on:
+  pull_request:
+    branches:
+      - main
+jobs:
+  verify-hardware-signatures:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Audit Repository Integrity Stream
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify Commit & Tag Cryptographic Signatures
+        run: |
+          git log --pretty=format:'%H %G?' origin/main..HEAD | while read hash status; do
+            if [ "$status" != "G" ] && [ "$status" != "U" ]; then
+              echo "Unsigned or invalid signature on commit $hash"
+              exit 1
+            fi
+          done
+
+      - name: Validate Hardware-Bound Attestation Artifacts (optional)
+        run: |
+          if [ -f attestation/hardware_manifest.json ]; then
+            python scripts/verify_hardware_attestation.py attestation/hardware_manifest.json || true
+          fi
+
+      - name: Fail PR if any integrity gate fails
+        if: failure()
+        run: |
+          echo "Cryptographic heritage or hardware attestation check failed."
+          exit 1

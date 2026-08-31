@@ -1,0 +1,31 @@
+groups:
+  - name: truth_infrastructure_alerts
+    rules:
+      - alert: DatabaseSchemaDriftDetected
+        expr: investigative_schema_hash_match == 0
+        for: 1m
+        labels:
+          severity: critical
+          tier: data-integrity
+        annotations:
+          summary: "Database structural consensus compromise detected."
+          description: "The Neo4j graph schema hash does not match the signed cryptographic baseline."
+
+      - alert: CanaryDeploymentHighErrorRate
+        expr: sum(rate(http_requests_total{status=~"5.*",app="truth-engine"}[2m])) / sum(rate(http_requests_total{app="truth-engine"}[2m])) * 100 > 0.5
+        for: 30s
+        labels:
+          severity: warning
+          tier: deployment
+        annotations:
+          summary: "Canary container route error threshold exceeded."
+          description: "The active canary deployment is exceeding the allowed error rate."
+
+      - alert: ElevatedYARAHits
+        expr: rate(investigative_yara_matches_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          tier: forensic
+        annotations:
+          summary: "Unusual rate of hidden-script / injection signatures"
